@@ -270,24 +270,90 @@ class StrokeRiskModel:
         plt.close()
 
     def plot_feature_importance(self, X, y):
-        # Create a simpler model for feature importance
-        from sklearn.ensemble import RandomForestClassifier
-        rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-        rf_model.fit(X, y)
-        
-        # Get feature importance
-        importance = pd.DataFrame({
-            'feature': X.columns,
-            'importance': rf_model.feature_importances_
-        }).sort_values('importance', ascending=False)
-        
-        # Plot feature importance
-        plt.figure(figsize=(10, 6))
-        sns.barplot(data=importance, x='importance', y='feature')
-        plt.title('Feature Importance')
-        plt.tight_layout()
-        plt.savefig('static/plots/feature_importance.png')
-        plt.close()
+        # Since X is now a numpy array after preprocessing, we need to get the original features
+        # Load the original dataset to get feature names
+        try:
+            df = pd.read_csv('data/healthcare-dataset-stroke-data.csv')
+            
+            # Remove id column if exists
+            if 'id' in df.columns:
+                df = df.drop('id', axis=1)
+            
+            # Get original feature names (before polynomial expansion)
+            original_features = [col for col in df.columns if col != 'stroke']
+            
+            # Add interaction features names
+            interaction_features = [
+                'age_hypertension', 'age_heart_disease', 'age_glucose', 'age_bmi',
+                'hypertension_heart_disease', 'hypertension_glucose', 'heart_disease_glucose'
+            ]
+            
+            all_base_features = original_features + interaction_features
+            
+            # Create a simple model using the original features (before polynomial expansion)
+            # We'll create a DataFrame with base features for the RandomForest
+            df_processed = df.copy()
+            
+            # Convert binary columns
+            df_processed['hypertension'] = df_processed['hypertension'].astype(int)
+            df_processed['heart_disease'] = df_processed['heart_disease'].astype(int)
+            df_processed['stroke'] = df_processed['stroke'].astype(int)
+            
+            # Handle missing values
+            df_processed['bmi'] = df_processed['bmi'].fillna(df_processed['bmi'].mean())
+            
+            # Create interaction features
+            df_processed = self.create_interaction_features(df_processed)
+            
+            # Encode categorical variables for RandomForest
+            categorical_columns = ['gender', 'ever_married', 'work_type', 'Residence_type', 'smoking_status']
+            for column in categorical_columns:
+                if column in df_processed.columns:
+                    le = LabelEncoder()
+                    df_processed[column] = le.fit_transform(df_processed[column].astype(str))
+            
+            # Convert all columns to float32
+            for column in df_processed.columns:
+                df_processed[column] = df_processed[column].astype('float32')
+            
+            # Split features and target
+            X_rf = df_processed.drop('stroke', axis=1)
+            y_rf = df_processed['stroke']
+            
+            # Create and train RandomForest for feature importance
+            from sklearn.ensemble import RandomForestClassifier
+            rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
+            rf_model.fit(X_rf, y_rf)
+            
+            # Get feature importance
+            importance_df = pd.DataFrame({
+                'feature': X_rf.columns,
+                'importance': rf_model.feature_importances_
+            }).sort_values('importance', ascending=False).head(15)  # Show top 15 features
+            
+            # Plot feature importance
+            plt.figure(figsize=(10, 8))
+            sns.barplot(data=importance_df, x='importance', y='feature')
+            plt.title('Top 15 Feature Importance (Random Forest)')
+            plt.xlabel('Importance')
+            plt.ylabel('Features')
+            plt.tight_layout()
+            
+            # Save the plot
+            os.makedirs('static/plots', exist_ok=True)
+            plt.savefig('static/plots/feature_importance.png', dpi=300, bbox_inches='tight')
+            plt.close()
+            
+        except Exception as e:
+            print(f"Error creating feature importance plot: {str(e)}")
+            # Create a simple placeholder plot if there's an error
+            plt.figure(figsize=(8, 6))
+            plt.text(0.5, 0.5, f'Feature importance plot unavailable\nError: {str(e)}', 
+                    ha='center', va='center', transform=plt.gca().transAxes)
+            plt.title('Feature Importance')
+            os.makedirs('static/plots', exist_ok=True)
+            plt.savefig('static/plots/feature_importance.png')
+            plt.close()
 
     def load_model(self):
         self.model = tf.keras.models.load_model(self.model_path)
@@ -340,4 +406,4 @@ class StrokeRiskModel:
             raise
 
 # Initialize the model
-stroke_model = StrokeRiskModel() 
+stroke_model = StrokeRiskModel()
