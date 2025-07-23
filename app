@@ -344,7 +344,8 @@ def sos():
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Calculate distance between two points in kilometers"""
     return round(geodesic((lat1, lon1), (lat2, lon2)).kilometers, 2)
-
 if __name__ == '__main__':
-    init_db()  # Initialize database with new schema
-    app.run(debug=True) 
+    init_db()
+    app.run(host='0.0.0.0', port=8080)
+
+
