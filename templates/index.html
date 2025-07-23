@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}StrokeGuard Pro{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden">
+    <!-- Dynamic Particle Background -->
+    <div class="absolute inset-0 pointer-events-none z-0">
+        <div class="absolute w-80 h-80 bg-indigo-300/20 rounded-full -top-40 -left-40 animate-float"></div>
+        <div class="absolute w-96 h-96 bg-purple-300/20 rounded-full -bottom-48 -right-48 animate-float delay-1000"></div>
+        <div class="absolute w-64 h-64 bg-blue-200/20 rounded-full top-1/4 left-3/4 animate-float delay-2000"></div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="text-center mb-20 max-w-5xl mx-auto relative z-10">
+        <div class="relative inline-block mb-6">
+            <h1 class="text-5xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 animate-gradient-text">
+                StrokeGuard Pro
+            </h1>
+            <div class="absolute -top-4 -right-4 w-6 h-6 bg-green-400 rounded-full animate-ping"></div>
+        </div>
+        <p class="text-lg md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed animate-slide-up">
+            Empowering healthcare with AI-driven stroke risk assessment, redefining precision and care.
+        </p>
+        <div class="mt-10 flex justify-center gap-6">
+            {% if not current_user.is_authenticated %}
+                <a href="{{ url_for('register') }}" 
+                   class="relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-full overflow-hidden group">
+                    <span class="absolute inset-0 bg-gradient-to-r from-indigo-700 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span class="relative flex items-center z-10">
+                        <i class="fas fa-user-plus mr-2"></i>
+                        Get Started
+                    </span>
+                    <span class="absolute inset-0 bg-white/20 scale-0 group-hover:scale-150 transition-transform duration-300 rounded-full origin-center"></span>
+                </a>
+                <a href="{{ url_for('login') }}" 
+                   class="relative inline-flex items-center px-8 py-4 text-indigo-600 font-semibold rounded-full border-2 border-indigo-600 group">
+                    <span class="absolute inset-0 bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-full"></span>
+                    <span class="relative flex items-center z-10">
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        Login
+                    </span>
+                </a>
+            {% else %}
+                <a href="{{ url_for('predict') }}" 
+                   class="relative inline-flex items-center px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-full overflow-hidden group">
+                    <span class="absolute inset-0 bg-gradient-to-r from-indigo-700 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span class="relative flex items-center z-10">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        New Assessment
+                    </span>
+                    <span class="absolute inset-0 bg-white/20 scale-0 group-hover:scale-150 transition-transform duration-300 rounded-full origin-center"></span>
+                </a>
+                <a href="{{ url_for('dashboard') }}" 
+                   class="relative inline-flex items-center px-8 py-4 text-indigo-600 font-semibold rounded-full border-2 border-indigo-600 group">
+                    <span class="absolute inset-0 bg-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-full"></span>
+                    <span class="relative flex items-center z-10">
+                        <i class="fas fa-chart-bar mr-2"></i>
+                        View Dashboard
+                    </span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="w-full max-w-7xl mb-24 relative z-10">
+        <h2 class="text-4xl md:text-5xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-16 animate-slide-up">
+            Unmatched Features
+        </h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-100 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-6xl text-indigo-600 mb-6 animate-pulse-slow relative z-10">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3 class="text-2xl font-semibold mb-4 text-gray-900">AI-Powered Analysis</h3>
+                <p class="text-gray-600 leading-relaxed">
+                    Harness next-gen AI for precise, data-driven stroke risk predictions with unparalleled accuracy.
+                </p>
+            </div>
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-200 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-purple-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-6xl text-purple-600 mb-6 animate-pulse-slow relative z-10">
+                    <i class="fas fa-qrcode"></i>
+                </div>
+                <h3 class="text-2xl font-semibold mb-4 text-gray-900">QR Code Reports</h3>
+                <p class="text-gray-600 leading-relaxed">
+                    Instantly generate secure, shareable reports with QR codes for seamless collaboration.
+                </p>
+            </div>
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-300 relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-green-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-6xl text-green-600 mb-6 animate-pulse-slow relative z-10">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <h3 class="text-2xl font-semibold mb-4 text-gray-900">Real-time Analytics</h3>
+                <p class="text-gray-600 leading-relaxed">
+                    Dynamic dashboards deliver real-time insights for informed decision-making.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Why Choose Us Section -->
+    <div class="w-full max-w-7xl mb-24 relative z-10">
+        <h2 class="text-4xl md:text-5xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-16 animate-slide-up">
+            StrokeGuard Pro
+        </h2>
+        <div class="grid md:grid-cols-2 gap-8">
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-100 flex items-start relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-4xl text-indigo-600 mr-6 relative z-10">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-900">Secure & Reliable</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Military-grade encryption and robust backups safeguard your data with absolute trust.
+                    </p>
+                </div>
+            </div>
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-200 flex items-start relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-4xl text-indigo-600 mr-6 relative z-10">
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-900">Fast & Efficient</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Lightning-fast assessments and report generation for unmatched efficiency.
+                    </p>
+                </div>
+            </div>
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-300 flex items-start relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-4xl text-indigo-600 mr-6 relative z-10">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-900">Mobile Friendly</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Intuitive access across all devices, optimized for on-the-go healthcare professionals.
+                    </p>
+                </div>
+            </div>
+            <div class="premium-card bg-white/90 backdrop-blur-2xl p-8 rounded-3xl shadow-2xl border border-gray-100/30 hover:shadow-3xl transition-all duration-500 transform hover:-translate-y-3 animate-slide-up delay-400 flex items-start relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-600/10 rounded-full -translate-y-12 translate-x-12"></div>
+                <div class="text-4xl text-indigo-600 mr-6 relative z-10">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="relative z-10">
+                    <h3 class="text-xl font-semibold mb-3 text-gray-900">24/7 Availability</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Always-on platform with 99.99% uptime for uninterrupted care delivery.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final CTA Section -->
+    <div class="w-full max-w-5xl text-center relative z-10 py-12">
+        <div class="relative inline-block">
+            <h2 class="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 mb-8 animate-slide-up">
+                Redefine Healthcare Today
+            </h2>
+            <div class="absolute -top-4 -right-4 w-6 h-6 bg-green-400 rounded-full animate-ping"></div>
+        </div>
+        <p class="text-lg md:text-xl text-gray-700 mb-10 animate-slide-up">
+            Join a global community of healthcare innovators transforming patient outcomes with StrokeGuard Pro.
+        </p>
+        <a href="{{ url_for('register') }}" 
+           class="relative inline-flex items-center px-10 py-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-full overflow-hidden group">
+            <span class="absolute inset-0 bg-gradient-to-r from-indigo-700 to-purple-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+            <span class="relative flex items-center z-10 text-lg">
+                <i class="fas fa-rocket mr-3"></i>
+                Start Your Journey
+            </span>
+            <span class="absolute inset-0 bg-white/20 scale-0 group-hover:scale-150 transition-transform duration-300 rounded-full origin-center"></span>
+        </a>
+    </div>
+</div>
+
+<!-- Advanced CSS Animations -->
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0) translateX(0); }
+        50% { transform: translateY(-20px) translateX(10px); }
+    }
+    .animate-float {
+        animation: float 8s infinite ease-in-out;
+    }
+
+    @keyframes pulse-slow {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+    }
+    .animate-pulse-slow {
+        animation: pulse-slow 4s infinite;
+    }
+
+    @keyframes slide-up {
+        from { transform: translateY(30px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .animate-slide-up {
+        animation: slide-up 1s ease-out;
+    }
+
+    @keyframes gradient-text {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .animate-gradient-text {
+        background-size: 200% 200%;
+        animation: gradient-text 6s ease-in-out infinite;
+    }
+
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+    .delay-1000 { animation-delay: 1s; }
+    .delay-2000 { animation-delay: 2s; }
+
+    .shadow-3xl {
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+</style>
+{% endblock %}

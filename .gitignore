@@ -1,0 +1,20 @@
+# Ignore Python cache and virtual environment
+__pycache__/
+*.py[cod]
+venv/
+
+# Flask-related
+instance/
+*.log
+*.db
+
+# ML models or big files
+*.pkl
+*.h5
+*.joblib
+*.gz
+
+# System + Secret
+.env
+.DS_Store
+Thumbs.db

@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+
+{% block title %}New Assessment{% endblock %}
+
+{% block content %}
+<style>
+    /* Importing a premium font */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+    /* General styling for a premium look */
+    body {
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .premium-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        padding: 2.5rem;
+    }
+
+    .text-primary {
+        color: #1a3c34 !important;
+    }
+
+    .text-accent {
+        color: #e67e22 !important;
+    }
+
+    h2, h3 {
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    h2 {
+        font-size: 2.25rem;
+        background: linear-gradient(to right, #1a3c34, #2e5a50);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    h3 {
+        font-size: 1.5rem;
+        position: relative;
+        padding-bottom: 0.75rem;
+    }
+
+    h3::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 3px;
+        background: linear-gradient(to right, #e67e22, #f39c12);
+        border-radius: 2px;
+    }
+
+    .premium-label {
+        font-weight: 600;
+        color: #34495e;
+        font-size: 1.1rem;
+    }
+
+    .premium-input {
+        border: 1px solid #dfe6e9;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .premium-input:focus {
+        border-color: #e67e22;
+        box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.1);
+        outline: none;
+    }
+
+    .premium-input:hover {
+        border-color: #b2bec3;
+    }
+
+    select.premium-input {
+        appearance: none;
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%2334495e" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1.25rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(230, 126, 34, 0.3);
+        border: none;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
+        background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    }
+
+    .text-gray-500 {
+        color: #636e72 !important;
+    }
+
+    .space-y-8 > * + * {
+        margin-top: 2.5rem;
+    }
+
+    .space-y-6 > * + * {
+        margin-top: 1.75rem;
+    }
+
+    .grid {
+        gap: 1.75rem;
+    }
+
+    .fas {
+        font-size: 1.25rem;
+    }
+
+    .text-sm {
+        font-size: 0.95rem;
+    }
+
+    #bmiCalculatorModal .premium-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+        border-radius: 1rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    #bmiResult {
+        background: #f1f2f6;
+        border-radius: 0.75rem;
+    }
+</style>
+
+<div class="min-h-[70vh] flex items-center justify-center py-8">
+    <div class="premium-card w-full max-w-4xl p-8">
+        <div class="text-center mb-8">
+            <div class="text-4xl text-accent mb-4">
+                <i class="fas fa-user-md"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-primary">New Health Assessment</h2>
+            <p class="text-gray-600 mt-2">Enter patient information for stroke risk prediction</p>
+        </div>
+
+        <form method="POST" class="space-y-8">
+            <!-- Patient Information -->
+            <div class="space-y-6">
+                <h3 class="text-lg font-semibold text-primary flex items-center">
+                    <i class="fas fa-user mr-2"></i>
+                    Patient Information
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="patient_name" class="premium-label block">Patient Name</label>
+                        <div class="mt-1 relative">
+                            <div class="absolute inset-y-0 left-0 pl-0 flex items-center pointer-events-none">
+                                <i class="fas fa-user text-gray-400"></i>
+                            </div>
+                            <input type="text" name="patient_name" id="patient_name" required class="premium-input pl-14 w-full" placeholder="Enter patient name">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="gender" class="premium-label block">Gender</label>
+                        <div class="mt-1 relative">
+                            <select name="gender" id="gender" required class="premium-input w-full">
+                                <option value="">Select gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="age" class="premium-label block">Age</label>
+                        <div class="mt-1 relative">
+                            <div class="absolute inset-y-0 left-0 pl-0 flex items-center pointer-events-none">
+                                <i class="fas fa-birthday-cake text-gray-400"></i>
+                            </div>
+                            <input type="number" name="age" id="age" required min="0" max="120" step="0.1" class="premium-input pl-14 w-full" placeholder="Enter age">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="ever_married" class="premium-label block">Ever Married</label>
+                        <div class="mt-1 relative">
+                            <select name="ever_married" id="ever_married" required class="premium-input w-full">
+                                <option value="">Select marital status</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Metrics -->
+            <div class="space-y-6">
+                <h3 class="text-lg font-semibold text-primary flex items-center">
+                    <i class="fas fa-heartbeat mr-2"></i>
+                    Health Metrics
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="hypertension" class="premium-label block">Hypertension</label>
+                        <div class="mt-1 relative">
+                            <select name="hypertension" id="hypertension" required class="premium-input w-full">
+                                <option value="">Select option</option>
+                                <option value="1">Yes</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="heart_disease" class="premium-label block">Heart Disease</label>
+                        <div class="mt-1 relative">
+                            <select name="heart_disease" id="heart_disease" required class="premium-input w-full">
+                                <option value="">Select option</option>
+                                <option value="1">Yes</option>
+                                <option value="0">No</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="avg_glucose_level" class="premium-label block">Average Glucose Level (mg/dL)</label>
+                        <div class="mt-1 relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-tint text-gray-400"></i>
+                            </div>
+                            <input type="number" name="avg_glucose_level" id="avg_glucose_level" required step="0.1" min="50" max="400" class="premium-input pl-14 w-full" placeholder="Enter glucose level">
+                            <p class="mt-1 text-sm text-gray-500">Normal range: 70-140 mg/dL (fasting)</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="bmi" class="premium-label block">BMI</label>
+                        <div class="mt-1 relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-weight text-gray-400"></i>
+                            </div>
+                            <div class="flex">
+                                <input type="number" name="bmi" id="bmi" required step="0.1" min="10" max="50" class="premium-input pl-14 w-full" placeholder="Enter BMI">
+                                <button type="button" onclick="openBMICalculator()" class="ml-2 btn-primary">
+                                    <i class="fas fa-calculator"></i>
+                                </button>
+                            </div>
+                            <p class="mt-1 text-sm text-gray-500">Normal range: 18.5-24.9</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lifestyle & Environment -->
+            <div class="space-y-6">
+                <h3 class="text-lg font-semibold text-primary flex items-center">
+                    <i class="fas fa-home mr-2"></i>
+                    Lifestyle & Environment
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="work_type" class="premium-label block">Work Type</label>
+                        <div class="mt-1 relative">
+                            <select name="work_type" id="work_type" required class="premium-input w-full">
+                                <option value="">Select work type</option>
+                                <option value="Private">Private</option>
+                                <option value="Self-employed">Self-employed</option>
+                                <option value="Govt_job">Government Job</option>
+                                <option value="children">Children</option>
+                                <option value="Never_worked">Never worked</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="residence_type" class="premium-label block">Residence Type</label>
+                        <div class="mt-1 relative">
+                            <select name="residence_type" id="residence_type" required class="premium-input w-full">
+                                <option value="">Select residence type</option>
+                                <option value="Urban">Urban</option>
+                                <option value="Rural">Rural</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="smoking_status" class="premium-label block">Smoking Status</label>
+                        <div class="mt-1 relative">
+                            <select name="smoking_status" id="smoking_status" required class="premium-input w-full">
+                                <option value="">Select smoking status</option>
+                                <option value="formerly smoked">Formerly smoked</option>
+                                <option value="never smoked">Never smoked</option>
+                                <option value="smokes">Currently smoking</option>
+                                <option value="Unknown">Unknown</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-6">
+                <a href="{{ url_for('dashboard') }}" class="text-primary hover:text-accent transition duration-300 flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    Back to Dashboard
+                </a>
+                <button type="submit" class="btn-primary flex items-center">
+                    <i class="fas fa-calculator mr-2"></i>
+                    Calculate Risk
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 text-center">
+            <p class="text-sm text-gray-500">
+                <i class="fas fa-info-circle mr-1"></i>
+                This assessment uses advanced AI to predict stroke risk based on patient health metrics. 
+                For accurate medical advice, please consult with a healthcare professional.
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- BMI Calculator Modal -->
+<div id="bmiCalculatorModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="premium-card p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold text-primary">BMI Calculator</h3>
+            <button onclick="closeBMICalculator()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="premium-label block">Height</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <input type="number" id="heightFeet" class="premium-input w-full" placeholder="Feet" min="0" max="8">
+                    </div>
+                    <div>
+                        <input type="number" id="heightInches" class="premium-input w-full" placeholder="Inches" min="0" max="11">
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <label class="premium-label block">Weight</label>
+                <div class="relative">
+                    <input type="number" id="weight" class="premium-input w-full" placeholder="Weight in kg" min="0" max="300">
+                    <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">kg</span>
+                </div>
+            </div>
+            
+            <div class="pt-4">
+                <button onclick="calculateBMI()" class="btn-primary w-full">
+                    Calculate BMI
+                </button>
+            </div>
+            
+            <div id="bmiResult" class="hidden">
+                <div class="p-4 rounded-lg bg-gray-100">
+                    <p class="text-center">
+                        <span class="font-bold">Your BMI: </span>
+                        <span id="bmiValue" class="text-accent"></span>
+                    </p>
+                    <p class="text-center mt-2">
+                        <span class="font-bold">Category: </span>
+                        <span id="bmiCategory" class="text-accent"></span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openBMICalculator() {
+    document.getElementById('bmiCalculatorModal').classList.remove('hidden');
+    document.getElementById('bmiCalculatorModal').classList.add('flex');
+}
+
+function closeBMICalculator() {
+    document.getElementById('bmiCalculatorModal').classList.add('hidden');
+    document.getElementById('bmiCalculatorModal').classList.remove('flex');
+}
+
+function calculateBMI() {
+    const feet = parseFloat(document.getElementById('heightFeet').value) || 0;
+    const inches = parseFloat(document.getElementById('heightInches').value) || 0;
+    const weightKg = parseFloat(document.getElementById('weight').value) || 0;
+    
+    if ((feet === 0 && inches === 0) || weightKg === 0) {
+        alert('Please enter valid height and weight values');
+        return;
+    }
+    
+    // Convert height to meters
+    const heightInInches = (feet * 12) + inches;
+    const heightInMeters = heightInInches * 0.0254;
+    
+    // Calculate BMI
+    const bmi = weightKg / (heightInMeters * heightInMeters);
+    
+    // Display result
+    document.getElementById('bmiValue').textContent = bmi.toFixed(1);
+    
+    // Determine category and color
+    let category = '';
+    let categoryColor = '';
+    if (bmi < 18.5) {
+        category = 'Underweight';
+        categoryColor = 'text-yellow-600';
+    } else if (bmi < 25) {
+        category = 'Normal weight';
+        categoryColor = 'text-green-600';
+    } else if (bmi < 30) {
+        category = 'Overweight';
+        categoryColor = 'text-orange-600';
+    } else {
+        category = 'Obese';
+        categoryColor = 'text-red-600';
+    }
+    
+    document.getElementById('bmiCategory').textContent = category;
+    document.getElementById('bmiCategory').className = categoryColor;
+    document.getElementById('bmiResult').classList.remove('hidden');
+    
+    // Fill the BMI input in the main form
+    document.getElementById('bmi').value = bmi.toFixed(1);
+}
+
+// Close modal when clicking outside
+document.getElementById('bmiCalculatorModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeBMICalculator();
+    }
+});
+</script>
+{% endblock %}

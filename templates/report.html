@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Assessment Report{% endblock %}
+
+{% block content %}
+<div class="min-h-[70vh] flex items-center justify-center py-12 bg-gradient-to-br from-indigo-50 via-white to-indigo-100">
+    <div class="backdrop-blur-md bg-white/70 shadow-xl rounded-3xl p-10 w-full max-w-5xl border border-gray-200">
+
+        <!-- Header -->
+        <div class="text-center mb-10 relative">
+            <div class="text-5xl bg-gradient-to-r from-purple-500 to-pink-500 text-transparent bg-clip-text font-extrabold animate-gradient">
+                <i class="fas fa-file-medical"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mt-2">Health Assessment Report</h2>
+            <p class="text-gray-500 mt-1 text-sm">
+                Generated on {{ assessment.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+            </p>
+            <div class="absolute top-0 right-0 bg-gradient-to-r from-indigo-400 to-purple-400 text-white text-xs py-1 px-3 rounded-bl-2xl rounded-tr-3xl shadow-lg">
+                AI Powered
+            </div>
+        </div>
+
+        <!-- Patient & Health Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
+            <!-- Patient Info -->
+            <div class="glass-card p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <h3 class="text-lg font-semibold text-indigo-600 flex items-center mb-4">
+                    <i class="fas fa-user mr-2"></i> Patient Information
+                </h3>
+                <ul class="space-y-2 text-gray-700">
+                    <li><strong>Name:</strong> {{ assessment.patient_name }}</li>
+                    <li><strong>Age:</strong> {{ assessment.age }} years</li>
+                    <li><strong>Gender:</strong> {{ assessment.gender }}</li>
+                    <li><strong>Marital Status:</strong> {{ assessment.ever_married }}</li>
+                    <li><strong>Work Type:</strong> {{ assessment.work_type }}</li>
+                    <li><strong>Residence Type:</strong> {{ assessment.residence_type }}</li>
+                </ul>
+            </div>
+
+            <!-- Health Metrics -->
+            <div class="glass-card p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <h3 class="text-lg font-semibold text-indigo-600 flex items-center mb-4">
+                    <i class="fas fa-heartbeat mr-2"></i> Health Metrics
+                </h3>
+                <ul class="space-y-2 text-gray-700">
+                    <li><strong>BMI:</strong> {{ assessment.bmi }}</li>
+                    <li><strong>Glucose Level:</strong> {{ assessment.avg_glucose_level }} mg/dL</li>
+                    <li><strong>Hypertension:</strong> {{ "Yes" if assessment.hypertension else "No" }}</li>
+                    <li><strong>Heart Disease:</strong> {{ "Yes" if assessment.heart_disease else "No" }}</li>
+                    <li><strong>Smoking Status:</strong> {{ assessment.smoking_status }}</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Risk Assessment -->
+        <div class="glass-card p-8 rounded-xl shadow-md hover:shadow-lg transition mb-10">
+            <h3 class="text-lg font-semibold text-indigo-600 flex items-center mb-6">
+                <i class="fas fa-chart-pie mr-2"></i> Stroke Risk Assessment
+            </h3>
+            <div class="flex flex-col md:flex-row items-center md:justify-between space-y-6 md:space-y-0">
+                <div class="flex-1">
+                    <p class="text-sm text-gray-500 mb-2">Stroke Risk Level</p>
+                    <div class="relative w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div class="{% if assessment.stroke_risk > 0.7 %}bg-red-500{% elif assessment.stroke_risk > 0.4 %}bg-yellow-400{% else %}bg-green-500{% endif %} h-4 rounded-full" style="width: {{ assessment.stroke_risk * 100 }}%;"></div>
+                    </div>
+                    <div class="mt-2 flex items-center justify-between text-sm">
+                        <span class="font-medium text-gray-700">{{ "%.1f"|format(assessment.stroke_risk * 100) }}%</span>
+                        <span class="text-xs uppercase tracking-wide px-2 py-1 rounded-full 
+                            {% if assessment.stroke_risk > 0.7 %}bg-red-100 text-red-600{% elif assessment.stroke_risk > 0.4 %}bg-yellow-100 text-yellow-600{% else %}bg-green-100 text-green-600{% endif %}">
+                            {% if assessment.stroke_risk > 0.7 %}High Risk{% elif assessment.stroke_risk > 0.4 %}Moderate Risk{% else %}Low Risk{% endif %}
+                        </span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code to view digital report" class="w-36 h-36 rounded-lg border shadow-md hover:scale-105 transition duration-300">
+                    <p class="text-xs text-gray-500 mt-1">Scan to view digitally</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendations -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="glass-card p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <h4 class="text-lg font-semibold text-indigo-600 flex items-center mb-3">
+                    <i class="fas fa-heart mr-2"></i> Lifestyle Recommendations
+                </h4>
+                <ul class="space-y-2 text-gray-700">
+                    {% for recommendation in recommendations.lifestyle %}
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i> {{ recommendation }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <div class="glass-card p-6 rounded-xl shadow-md hover:shadow-lg transition">
+                <h4 class="text-lg font-semibold text-indigo-600 flex items-center mb-3">
+                    <i class="fas fa-stethoscope mr-2"></i> Medical Recommendations
+                </h4>
+                <ul class="space-y-2 text-gray-700">
+                    {% for recommendation in recommendations.medical %}
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i> {{ recommendation }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between mt-10 border-t pt-6 border-gray-300">
+            <a href="{{ url_for('dashboard') }}" class="text-indigo-600 hover:text-purple-600 transition flex items-center font-medium">
+                <i class="fas fa-arrow-left mr-2"></i> Back to Dashboard
+            </a>
+            <button onclick="window.print()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition flex items-center">
+                <i class="fas fa-print mr-2"></i> Print Report
+            </button>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="mt-8 text-center text-xs text-gray-500">
+            <i class="fas fa-info-circle mr-1"></i>
+            This AI-generated report is for informational purposes only. Please consult a licensed medical professional for clinical evaluation.
+        </div>
+
+    </div>
+</div>
+
+<style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+    }
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    .animate-gradient {
+        background-size: 200% 200%;
+        animation: gradient 4s ease infinite;
+    }
+    @media print {
+        .glass-card, .btn-primary, .shadow, .hover\:shadow-lg, .hover\:scale-105 {
+            box-shadow: none !important;
+            background: white !important;
+        }
+        .border {
+            border-color: #ddd !important;
+        }
+    }
+</style>
+{% endblock %}

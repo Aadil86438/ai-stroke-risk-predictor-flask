@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <h1 class="text-danger mb-4">Emergency SOS</h1>
+            <div class="mb-4">
+                <button id="sosButton" class="btn btn-danger btn-lg mb-2">
+                    <i class="fas fa-ambulance"></i> Find Nearby Hospitals
+                </button>
+                <a href="tel:911" class="btn btn-danger btn-lg mb-2 ms-2">
+                    <i class="fas fa-phone"></i> Call Emergency (911)
+                </a>
+            </div>
+            <div id="locationStatus" class="alert alert-info" style="display: none;">
+                Getting your location...
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div id="hospitalsList" class="list-group" style="display: none;">
+                <!-- Hospitals will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('sosButton').addEventListener('click', function() {
+    const locationStatus = document.getElementById('locationStatus');
+    const hospitalsList = document.getElementById('hospitalsList');
+    
+    locationStatus.style.display = 'block';
+    hospitalsList.style.display = 'none';
+    
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+            
+            // Send location to server
+            fetch('/sos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `latitude=${latitude}&longitude=${longitude}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                locationStatus.style.display = 'none';
+                hospitalsList.style.display = 'block';
+                
+                if (data.hospitals) {
+                    const hospitalsHTML = data.hospitals.map(hospital => `
+                        <div class="list-group-item premium-card mb-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="mb-1">${hospital.name}</h5>
+                                    <p class="mb-1">${hospital.address}</p>
+                                    <small class="text-muted">Distance: ${hospital.distance} km | Rating: ${hospital.rating}</small>
+                                </div>
+                                <div class="d-flex flex-column">
+                                    ${hospital.phone ? `
+                                        <a href="tel:${hospital.phone}" class="btn btn-primary btn-sm mb-2">
+                                            <i class="fas fa-phone"></i> Call
+                                        </a>
+                                    ` : ''}
+                                    <a href="https://www.google.com/maps/dir/?api=1&destination=${hospital.lat},${hospital.lng}" 
+                                       target="_blank" 
+                                       class="btn btn-secondary btn-sm">
+                                        <i class="fas fa-directions"></i> Directions
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                    
+                    hospitalsList.innerHTML = hospitalsHTML;
+                } else {
+                    hospitalsList.innerHTML = '<div class="alert alert-warning">No hospitals found nearby.</div>';
+                }
+            })
+            .catch(error => {
+                locationStatus.style.display = 'none';
+                hospitalsList.style.display = 'block';
+                hospitalsList.innerHTML = '<div class="alert alert-danger">Error finding hospitals. Please try again.</div>';
+            });
+        }, function(error) {
+            locationStatus.style.display = 'none';
+            hospitalsList.style.display = 'block';
+            hospitalsList.innerHTML = '<div class="alert alert-danger">Error getting your location. Please enable location services.</div>';
+        });
+    } else {
+        locationStatus.style.display = 'none';
+        hospitalsList.style.display = 'block';
+        hospitalsList.innerHTML = '<div class="alert alert-danger">Geolocation is not supported by your browser.</div>';
+    }
+});
+</script>
+{% endblock %} 
