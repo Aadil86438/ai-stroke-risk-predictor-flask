@@ -8,274 +8,261 @@ import (
 	"time"
 )
 
-// Account structure
+// Struct for account
 type Account struct {
-	Name    string
-	Phone   string
-	Pin     string
-	Created string
+	Name   string
+	Mobile string
+	PIN    string
+	Time   string
 }
 
-func main() {
-	for {
-		fmt.Println("\n------ MENU ------")
-		fmt.Println("1. Create Account")
-		fmt.Println("2. Credit")
-		fmt.Println("3. Debit")
-		fmt.Println("4. Balance Check")
-		fmt.Println("5. Statement")
-		fmt.Println("6. Exit")
-
-		fmt.Print("Enter your choice: ")
-		var choice int
-		fmt.Scan(&choice)
-
-		switch choice {
-		case 1:
-			createAccount()
-		case 2:
-			credit()
-		case 3:
-			debit()
-		case 4:
-			balanceCheck()
-		case 5:
-			statement()
-		case 6:
-			fmt.Println("Thank you for using the system.")
-			return
-		default:
-			fmt.Println("Invalid choice! Try again.")
-		}
-	}
+// Struct for transaction
+type Transaction struct {
+	Mobile string
+	Amount int
+	Time   string
+	Type   string // "Credit" or "Debit"
 }
 
-// ---------------- CREATE ACCOUNT ----------------
-func createAccount() {
-	var name string
-	var phone string
-	var pin string
-
-	fmt.Print("Enter your name: ")
-	fmt.Scan(&name)
-	fmt.Print("Enter phone number: ")
-	fmt.Scan(&phone)
-	fmt.Print("Set a 4-digit PIN: ")
-	fmt.Scan(&pin)
-
-	// read existing accounts
-	accounts, _ := readAccounts("accounts.csv")
-
-	// check duplicate phone number
-	for _, acc := range accounts {
-		if acc.Phone == phone {
-			fmt.Println("Error: Account already exists for this number.")
-			return
-		}
-	}
-
-	// new account
-	var acc Account
-	acc.Name = name
-	acc.Phone = phone
-	acc.Pin = pin
-	acc.Created = time.Now().Format("2006-01-02 15:04:05")
-
-	accounts = append(accounts, acc)
-	writeAccounts("accounts.csv", accounts)
-	fmt.Println("Account created successfully.")
-}
-
-// ---------------- CREDIT ----------------
-func credit() {
-	var phone string
-	var pin string
-	var amt int
-
-	fmt.Print("Enter phone number: ")
-	fmt.Scan(&phone)
-	fmt.Print("Enter PIN: ")
-	fmt.Scan(&pin)
-	fmt.Print("Enter amount to credit: ")
-	fmt.Scan(&amt)
-
-	if !accountExists(phone, pin) {
-		fmt.Println("Error: Invalid account or PIN.")
-		return
-	}
-
-	writeTransaction("transactions.csv", phone, pin, amt, "Credit")
-	fmt.Println("Amount credited successfully.")
-}
-
-// ---------------- DEBIT ----------------
-func debit() {
-	var phone string
-	var pin string
-	var amt int
-
-	fmt.Print("Enter phone number: ")
-	fmt.Scan(&phone)
-	fmt.Print("Enter PIN: ")
-	fmt.Scan(&pin)
-	fmt.Print("Enter amount to debit: ")
-	fmt.Scan(&amt)
-
-	if !accountExists(phone, pin) {
-		fmt.Println("Error: Invalid account or PIN.")
-		return
-	}
-
-	// check balance
-	bal := calculateBalance(phone)
-	if amt > bal {
-		fmt.Println("Error: Insufficient balance.")
-		return
-	}
-
-	writeTransaction("transactions.csv", phone, pin, amt, "Debit")
-	fmt.Println("Amount debited successfully.")
-}
-
-// ---------------- BALANCE CHECK ----------------
-func balanceCheck() {
-	var phone string
-	var pin string
-
-	fmt.Print("Enter phone number: ")
-	fmt.Scan(&phone)
-	fmt.Print("Enter PIN: ")
-	fmt.Scan(&pin)
-
-	if !accountExists(phone, pin) {
-		fmt.Println("Error: Invalid account or PIN.")
-		return
-	}
-
-	bal := calculateBalance(phone)
-	fmt.Println("Your current balance is:", bal)
-}
-
-// ---------------- STATEMENT ----------------
-func statement() {
-	var phone string
-	var pin string
-
-	fmt.Print("Enter phone number: ")
-	fmt.Scan(&phone)
-	fmt.Print("Enter PIN: ")
-	fmt.Scan(&pin)
-
-	if !accountExists(phone, pin) {
-		fmt.Println("Error: Invalid account or PIN.")
-		return
-	}
-
-	// read all transactions
-	file, err := os.Open("transactions.csv")
+// Save account to CSV
+func (a Account) Save() error {
+	file, err := os.OpenFile("account_opening.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Println("No transactions found.")
-		return
+		return err
 	}
 	defer file.Close()
-
-	reader := csv.NewReader(file)
-	records, _ := reader.ReadAll()
-
-	// create new statement file
-	newFile := "statement_" + phone + ".csv"
-	f, _ := os.Create(newFile)
-	defer f.Close()
-	writer := csv.NewWriter(f)
-	defer writer.Flush()
-
-	// write header
-	writer.Write([]string{"Phone", "PIN", "Amount", "Type", "Time"})
-
-	// write only this account transactions
-	for _, rec := range records {
-		if rec[0] == phone && rec[1] == pin {
-			writer.Write(rec)
-		}
-	}
-
-	fmt.Println("Statement saved to:", newFile)
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	return w.Write([]string{a.Name, a.Mobile, a.PIN, a.Time})
 }
 
-// ---------------- HELPER FUNCTIONS ----------------
-func readAccounts(fileName string) ([]Account, error) {
-	var accounts []Account
-	file, err := os.Open(fileName)
+// Save transaction to CSV
+func (t Transaction) Save() error {
+	file, err := os.OpenFile("transaction_details.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return accounts, nil
+		return err
 	}
 	defer file.Close()
+	w := csv.NewWriter(file)
+	defer w.Flush()
+	return w.Write([]string{t.Mobile, strconv.Itoa(t.Amount), t.Time, t.Type})
+}
 
-	reader := csv.NewReader(file)
-	records, _ := reader.ReadAll()
+// Check if account exists
+func accountExists(mobile string) bool {
+	file, err := os.Open("account_opening.csv")
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	r := csv.NewReader(file)
+	records, _ := r.ReadAll()
 	for _, rec := range records {
-		var acc Account
-		acc.Name = rec[0]
-		acc.Phone = rec[1]
-		acc.Pin = rec[2]
-		acc.Created = rec[3]
-		accounts = append(accounts, acc)
-	}
-	return accounts, nil
-}
-
-func writeAccounts(fileName string, accounts []Account) {
-	file, _ := os.Create(fileName)
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	for _, acc := range accounts {
-		writer.Write([]string{acc.Name, acc.Phone, acc.Pin, acc.Created})
-	}
-}
-
-func writeTransaction(fileName, phone, pin string, amt int, tType string) {
-	file, _ := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	writer.Write([]string{phone, pin, strconv.Itoa(amt), tType, time.Now().Format("2006-01-02 15:04:05")})
-}
-
-func accountExists(phone, pin string) bool {
-	accounts, _ := readAccounts("accounts.csv")
-	for _, acc := range accounts {
-		if acc.Phone == phone && acc.Pin == pin {
+		if rec[1] == mobile {
 			return true
 		}
 	}
 	return false
 }
 
-func calculateBalance(phone string) int {
-	file, err := os.Open("transactions.csv")
+// Verify account with pin
+func checkAccount(mobile, pin string) bool {
+	file, err := os.Open("account_opening.csv")
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	r := csv.NewReader(file)
+	records, _ := r.ReadAll()
+	for _, rec := range records {
+		if rec[1] == mobile && rec[2] == pin {
+			return true
+		}
+	}
+	return false
+}
+
+// Calculate balance
+func balance(mobile string) int {
+	file, err := os.Open("transaction_details.csv")
 	if err != nil {
 		return 0
 	}
 	defer file.Close()
-
-	reader := csv.NewReader(file)
-	records, _ := reader.ReadAll()
-
-	balance := 0
+	r := csv.NewReader(file)
+	records, _ := r.ReadAll()
+	bal := 0
 	for _, rec := range records {
-		if rec[0] == phone {
-			amt, _ := strconv.Atoi(rec[2])
+		if rec[0] == mobile {
+			amt, _ := strconv.Atoi(rec[1])
 			if rec[3] == "Credit" {
-				balance += amt
-			} else if rec[3] == "Debit" {
-				balance -= amt
+				bal += amt
+			} else {
+				bal -= amt
 			}
 		}
 	}
-	return balance
+	return bal
+}
+
+func main() {
+	for {
+		fmt.Println("\n--- Banking System ---")
+		fmt.Println("1. Open Account")
+		fmt.Println("2. Add Money")
+		fmt.Println("3. Withdraw Money")
+		fmt.Println("4. Balance Check")
+		fmt.Println("5. Statement")
+		fmt.Println("6. Exit")
+
+		var choice int
+		fmt.Print("Enter choice: ")
+		fmt.Scan(&choice)
+
+		if choice == 1 {
+			var name, mobile, pin string
+			fmt.Print("Enter Name: ")
+			fmt.Scan(&name)
+			fmt.Print("Enter Mobile (10 digits): ")
+			fmt.Scan(&mobile)
+
+			if len(mobile) != 10 {
+				fmt.Println("Invalid Mobile Number. Must be exactly 10 digits.")
+				continue
+			}
+			if accountExists(mobile) {
+				fmt.Println("Account already exists with this mobile number.")
+				continue
+			}
+
+			fmt.Print("Set 4-digit PIN: ")
+			fmt.Scan(&pin)
+			if len(pin) != 4 {
+				fmt.Println("Invalid PIN. Must be exactly 4 digits.")
+				continue
+			}
+
+			now := time.Now().Format("2006-01-02 15:04:05")
+			acc := Account{name, mobile, pin, now}
+			if err := acc.Save(); err != nil {
+				fmt.Println("Error:", err)
+			} else {
+				fmt.Println("Account Created Successfully")
+			}
+
+		} else if choice == 2 {
+			var mobile, pin string
+			var amt int
+			fmt.Print("Enter Mobile: ")
+			fmt.Scan(&mobile)
+			fmt.Print("Enter PIN: ")
+			fmt.Scan(&pin)
+
+			if !checkAccount(mobile, pin) {
+				fmt.Println("Invalid Mobile or PIN")
+				continue
+			}
+
+			fmt.Print("Enter Amount to Add: ")
+			fmt.Scan(&amt)
+			if amt <= 0 {
+				fmt.Println("Invalid Amount")
+				continue
+			}
+
+			now := time.Now().Format("2006-01-02 15:04:05")
+			tr := Transaction{mobile, amt, now, "Credit"}
+			if err := tr.Save(); err != nil {
+				fmt.Println("Error:", err)
+			} else {
+				fmt.Println("Amount Added Successfully")
+			}
+
+		} else if choice == 3 {
+			var mobile, pin string
+			var amt int
+			fmt.Print("Enter Mobile: ")
+			fmt.Scan(&mobile)
+			fmt.Print("Enter PIN: ")
+			fmt.Scan(&pin)
+
+			if !checkAccount(mobile, pin) {
+				fmt.Println("Invalid Mobile or PIN")
+				continue
+			}
+
+			fmt.Print("Enter Amount to Withdraw: ")
+			fmt.Scan(&amt)
+			if amt <= 0 {
+				fmt.Println("Invalid Amount")
+				continue
+			}
+
+			bal := balance(mobile)
+			if amt > bal {
+				fmt.Println("Insufficient Balance")
+				continue
+			}
+
+			now := time.Now().Format("2006-01-02 15:04:05")
+			tr := Transaction{mobile, amt, now, "Debit"}
+			if err := tr.Save(); err != nil {
+				fmt.Println("Error:", err)
+			} else {
+				fmt.Println("Amount Withdrawn Successfully")
+			}
+
+		} else if choice == 4 {
+			var mobile, pin string
+			fmt.Print("Enter Mobile: ")
+			fmt.Scan(&mobile)
+			fmt.Print("Enter PIN: ")
+			fmt.Scan(&pin)
+
+			if !checkAccount(mobile, pin) {
+				fmt.Println("Invalid Mobile or PIN")
+				continue
+			}
+			fmt.Println("Available Balance:", balance(mobile))
+
+		} else if choice == 5 {
+			var mobile, pin string
+			fmt.Print("Enter Mobile: ")
+			fmt.Scan(&mobile)
+			fmt.Print("Enter PIN: ")
+			fmt.Scan(&pin)
+
+			if !checkAccount(mobile, pin) {
+				fmt.Println("Invalid Mobile or PIN")
+				continue
+			}
+
+			file, err := os.Open("transaction_details.csv")
+			if err != nil {
+				fmt.Println("No Transactions Found")
+				continue
+			}
+			defer file.Close()
+			r := csv.NewReader(file)
+			records, _ := r.ReadAll()
+
+			fmt.Println("\n--- Statement ---")
+			found := false
+			for _, rec := range records {
+				if rec[0] == mobile {
+					fmt.Printf("Amount: %s | Time: %s | Type: %s\n", rec[1], rec[2], rec[3])
+					found = true
+				}
+			}
+			if !found {
+				fmt.Println("No Transactions Found")
+			}
+
+		} else if choice == 6 {
+			fmt.Println("Thank you for using our Banking System.")
+			break
+		} else {
+			fmt.Println("Invalid Choice. Please Try Again.")
+		}
+	}
 }
