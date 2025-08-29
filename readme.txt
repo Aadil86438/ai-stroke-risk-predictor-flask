@@ -5,264 +5,229 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
-// Struct for account
-type Account struct {
-	Name   string
-	Mobile string
-	PIN    string
-	Time   string
+type Task struct {
+	ID          int
+	Title       string
+	Description string
+	Time        string
 }
 
-// Struct for transaction
-type Transaction struct {
-	Mobile string
-	Amount int
-	Time   string
-	Type   string // "Credit" or "Debit"
+const fileName = "todos.csv"
+
+// read tasks from csv
+func readCSV() ([]Task, error) {
+	var tasks []Task
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return tasks, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return tasks, err
+	}
+
+	for _, rec := range records {
+		if len(rec) == 4 {
+			id, _ := strconv.Atoi(rec[0])
+			tasks = append(tasks, Task{id, rec[1], rec[2], rec[3]})
+		}
+	}
+	return tasks, nil
 }
 
-// Save account to CSV
-func (a Account) Save() error {
-	file, err := os.OpenFile("account_opening.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+// write tasks to csv
+func writeCSV(tasks []Task) error {
+	file, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	w := csv.NewWriter(file)
-	defer w.Flush()
-	return w.Write([]string{a.Name, a.Mobile, a.PIN, a.Time})
-}
 
-// Save transaction to CSV
-func (t Transaction) Save() error {
-	file, err := os.OpenFile("transaction_details.csv", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	w := csv.NewWriter(file)
-	defer w.Flush()
-	return w.Write([]string{t.Mobile, strconv.Itoa(t.Amount), t.Time, t.Type})
-}
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
 
-// Check if account exists
-func accountExists(mobile string) bool {
-	file, err := os.Open("account_opening.csv")
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-	r := csv.NewReader(file)
-	records, _ := r.ReadAll()
-	for _, rec := range records {
-		if rec[1] == mobile {
-			return true
+	for _, t := range tasks {
+		record := []string{strconv.Itoa(t.ID), t.Title, t.Description, t.Time}
+		if err := writer.Write(record); err != nil {
+			return err
 		}
 	}
-	return false
+	return nil
 }
 
-// Verify account with pin
-func checkAccount(mobile, pin string) bool {
-	file, err := os.Open("account_opening.csv")
-	if err != nil {
-		return false
-	}
-	defer file.Close()
-	r := csv.NewReader(file)
-	records, _ := r.ReadAll()
-	for _, rec := range records {
-		if rec[1] == mobile && rec[2] == pin {
-			return true
+// check time format and 5 min gap
+func isValidTime(input string, tasks []Task) bool {
+	formats := []string{"3:04PM", "3:04 PM", "03:04PM", "03:04 PM", "15:04"}
+	var newTime time.Time
+	var err error
+
+	input = strings.ToUpper(strings.TrimSpace(input))
+
+	ok := false
+	for _, f := range formats {
+		newTime, err = time.Parse(f, input)
+		if err == nil {
+			ok = true
+			break
 		}
 	}
-	return false
-}
-
-// Calculate balance
-func balance(mobile string) int {
-	file, err := os.Open("transaction_details.csv")
-	if err != nil {
-		return 0
+	if !ok {
+		return false
 	}
-	defer file.Close()
-	r := csv.NewReader(file)
-	records, _ := r.ReadAll()
-	bal := 0
-	for _, rec := range records {
-		if rec[0] == mobile {
-			amt, _ := strconv.Atoi(rec[1])
-			if rec[3] == "Credit" {
-				bal += amt
-			} else {
-				bal -= amt
+
+	for _, t := range tasks {
+		var exist time.Time
+		for _, f := range formats {
+			exist, err = time.Parse(f, t.Time)
+			if err == nil {
+				break
 			}
 		}
+		diff := newTime.Sub(exist)
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff < 5*time.Minute {
+			return false
+		}
 	}
-	return bal
+	return true
 }
 
+// add task
+func addTask() {
+	tasks, _ := readCSV()
+	var title, desc, t string
+
+	fmt.Print("Enter Title: ")
+	fmt.Scanln(&title)
+	fmt.Print("Enter Description: ")
+	fmt.Scanln(&desc)
+	fmt.Print("Enter Time (e.g., 4:05PM or 04:05 PM): ")
+	fmt.Scanln(&t)
+
+	if !isValidTime(t, tasks) {
+		fmt.Println("❌ Invalid time or less than 5 minutes gap")
+		return
+	}
+
+	newID := 1
+	if len(tasks) > 0 {
+		newID = tasks[len(tasks)-1].ID + 1
+	}
+
+	tasks = append(tasks, Task{newID, title, desc, strings.ToUpper(strings.TrimSpace(t))})
+
+	if err := writeCSV(tasks); err != nil {
+		fmt.Println("Error saving task:", err)
+		return
+	}
+	fmt.Println("✅ Task added successfully")
+}
+
+// list tasks
+func listTasks() {
+	tasks, _ := readCSV()
+	if len(tasks) == 0 {
+		fmt.Println("No tasks found")
+		return
+	}
+	fmt.Println("---- Your Tasks ----")
+	for _, t := range tasks {
+		fmt.Printf("[%d] %s | %s | %s\n", t.ID, t.Title, t.Description, t.Time)
+	}
+}
+
+// update task
+func updateTask() {
+	tasks, _ := readCSV()
+	listTasks()
+	if len(tasks) == 0 {
+		return
+	}
+	var id int
+	fmt.Print("Enter Task ID to update: ")
+	fmt.Scanln(&id)
+
+	if id < 1 || id > len(tasks) {
+		fmt.Println("❌ Invalid Task ID")
+		return
+	}
+	var newDesc string
+	fmt.Print("Enter new Description: ")
+	fmt.Scanln(&newDesc)
+
+	tasks[id-1].Description = newDesc
+	if err := writeCSV(tasks); err != nil {
+		fmt.Println("Error updating task:", err)
+		return
+	}
+	fmt.Println("✅ Task updated successfully")
+}
+
+// delete task
+func deleteTask() {
+	tasks, _ := readCSV()
+	listTasks()
+	if len(tasks) == 0 {
+		return
+	}
+	var id int
+	fmt.Print("Enter Task ID to delete: ")
+	fmt.Scanln(&id)
+
+	if id < 1 || id > len(tasks) {
+		fmt.Println("❌ Invalid Task ID")
+		return
+	}
+	tasks = append(tasks[:id-1], tasks[id:]...)
+
+	// reset IDs
+	for i := range tasks {
+		tasks[i].ID = i + 1
+	}
+
+	if err := writeCSV(tasks); err != nil {
+		fmt.Println("Error deleting task:", err)
+		return
+	}
+	fmt.Println("✅ Task deleted successfully")
+}
+
+// main menu
 func main() {
 	for {
-		fmt.Println("\n--- Banking System ---")
-		fmt.Println("1. Open Account")
-		fmt.Println("2. Add Money")
-		fmt.Println("3. Withdraw Money")
-		fmt.Println("4. Balance Check")
-		fmt.Println("5. Statement")
-		fmt.Println("6. Exit")
+		fmt.Println("\n---- ToDo List ----")
+		fmt.Println("1. Add Task")
+		fmt.Println("2. List Tasks")
+		fmt.Println("3. Update Task")
+		fmt.Println("4. Delete Task")
+		fmt.Println("5. Exit")
 
 		var choice int
 		fmt.Print("Enter choice: ")
-		fmt.Scan(&choice)
+		fmt.Scanln(&choice)
 
 		if choice == 1 {
-			var name, mobile, pin string
-			fmt.Print("Enter Name: ")
-			fmt.Scan(&name)
-			fmt.Print("Enter Mobile (10 digits): ")
-			fmt.Scan(&mobile)
-
-			if len(mobile) != 10 {
-				fmt.Println("Invalid Mobile Number. Must be exactly 10 digits.")
-				continue
-			}
-			if accountExists(mobile) {
-				fmt.Println("Account already exists with this mobile number.")
-				continue
-			}
-
-			fmt.Print("Set 4-digit PIN: ")
-			fmt.Scan(&pin)
-			if len(pin) != 4 {
-				fmt.Println("Invalid PIN. Must be exactly 4 digits.")
-				continue
-			}
-
-			now := time.Now().Format("2006-01-02 15:04:05")
-			acc := Account{name, mobile, pin, now}
-			if err := acc.Save(); err != nil {
-				fmt.Println("Error:", err)
-			} else {
-				fmt.Println("Account Created Successfully")
-			}
-
+			addTask()
 		} else if choice == 2 {
-			var mobile, pin string
-			var amt int
-			fmt.Print("Enter Mobile: ")
-			fmt.Scan(&mobile)
-			fmt.Print("Enter PIN: ")
-			fmt.Scan(&pin)
-
-			if !checkAccount(mobile, pin) {
-				fmt.Println("Invalid Mobile or PIN")
-				continue
-			}
-
-			fmt.Print("Enter Amount to Add: ")
-			fmt.Scan(&amt)
-			if amt <= 0 {
-				fmt.Println("Invalid Amount")
-				continue
-			}
-
-			now := time.Now().Format("2006-01-02 15:04:05")
-			tr := Transaction{mobile, amt, now, "Credit"}
-			if err := tr.Save(); err != nil {
-				fmt.Println("Error:", err)
-			} else {
-				fmt.Println("Amount Added Successfully")
-			}
-
+			listTasks()
 		} else if choice == 3 {
-			var mobile, pin string
-			var amt int
-			fmt.Print("Enter Mobile: ")
-			fmt.Scan(&mobile)
-			fmt.Print("Enter PIN: ")
-			fmt.Scan(&pin)
-
-			if !checkAccount(mobile, pin) {
-				fmt.Println("Invalid Mobile or PIN")
-				continue
-			}
-
-			fmt.Print("Enter Amount to Withdraw: ")
-			fmt.Scan(&amt)
-			if amt <= 0 {
-				fmt.Println("Invalid Amount")
-				continue
-			}
-
-			bal := balance(mobile)
-			if amt > bal {
-				fmt.Println("Insufficient Balance")
-				continue
-			}
-
-			now := time.Now().Format("2006-01-02 15:04:05")
-			tr := Transaction{mobile, amt, now, "Debit"}
-			if err := tr.Save(); err != nil {
-				fmt.Println("Error:", err)
-			} else {
-				fmt.Println("Amount Withdrawn Successfully")
-			}
-
+			updateTask()
 		} else if choice == 4 {
-			var mobile, pin string
-			fmt.Print("Enter Mobile: ")
-			fmt.Scan(&mobile)
-			fmt.Print("Enter PIN: ")
-			fmt.Scan(&pin)
-
-			if !checkAccount(mobile, pin) {
-				fmt.Println("Invalid Mobile or PIN")
-				continue
-			}
-			fmt.Println("Available Balance:", balance(mobile))
-
+			deleteTask()
 		} else if choice == 5 {
-			var mobile, pin string
-			fmt.Print("Enter Mobile: ")
-			fmt.Scan(&mobile)
-			fmt.Print("Enter PIN: ")
-			fmt.Scan(&pin)
-
-			if !checkAccount(mobile, pin) {
-				fmt.Println("Invalid Mobile or PIN")
-				continue
-			}
-
-			file, err := os.Open("transaction_details.csv")
-			if err != nil {
-				fmt.Println("No Transactions Found")
-				continue
-			}
-			defer file.Close()
-			r := csv.NewReader(file)
-			records, _ := r.ReadAll()
-
-			fmt.Println("\n--- Statement ---")
-			found := false
-			for _, rec := range records {
-				if rec[0] == mobile {
-					fmt.Printf("Amount: %s | Time: %s | Type: %s\n", rec[1], rec[2], rec[3])
-					found = true
-				}
-			}
-			if !found {
-				fmt.Println("No Transactions Found")
-			}
-
-		} else if choice == 6 {
-			fmt.Println("Thank you for using our Banking System.")
-			break
+			fmt.Println("Goodbye!")
+			return
 		} else {
-			fmt.Println("Invalid Choice. Please Try Again.")
+			fmt.Println("❌ Invalid choice")
 		}
 	}
 }
