@@ -15,6 +15,12 @@ type Task struct {
 	Status      string `json:"status"`
 }
 
+type ErrorStruct struct {
+	Status  string `json:"status"`
+	ErrCode string `json:"errcode"`
+	Message string `json:"message"`
+}
+
 var filename = "tasks.json"
 
 func readTasks() ([]Task, error) {
@@ -38,13 +44,20 @@ func writeTasks(tasks []Task) error {
 	return ioutil.WriteFile(filename, data, 0644)
 }
 
+func sendError(w http.ResponseWriter, code string, msg string) {
+	e := ErrorStruct{Status: "E", ErrCode: code, Message: msg}
+	data, _ := json.Marshal(e)
+	w.WriteHeader(http.StatusBadRequest)
+	w.Write(data)
+}
+
 func addTask(w http.ResponseWriter, r *http.Request) {
 	var t Task
 	body, _ := ioutil.ReadAll(r.Body)
 	json.Unmarshal(body, &t)
 
 	if t.Title == "" || t.Description == "" {
-		http.Error(w, "Title and Description cannot be empty", http.StatusBadRequest)
+		sendError(w, "MM01", "Title and Description cannot be empty")
 		return
 	}
 
@@ -53,7 +66,8 @@ func addTask(w http.ResponseWriter, r *http.Request) {
 	t.Status = "Pending"
 	tasks = append(tasks, t)
 	writeTasks(tasks)
-	w.Write([]byte("Task added"))
+
+	w.Write([]byte(`{"status":"S","message":"Task added"}`))
 }
 
 func listTasks(w http.ResponseWriter, r *http.Request) {
@@ -85,11 +99,11 @@ func updateTask(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !updated {
-		http.Error(w, "Task not found", http.StatusNotFound)
+		sendError(w, "MM02", "Task not found")
 		return
 	}
 	writeTasks(tasks)
-	w.Write([]byte("Task updated"))
+	w.Write([]byte(`{"status":"S","message":"Task updated"}`))
 }
 
 func deleteTask(w http.ResponseWriter, r *http.Request) {
@@ -108,11 +122,11 @@ func deleteTask(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !found {
-		http.Error(w, "Task not found", http.StatusNotFound)
+		sendError(w, "MM03", "Task not found")
 		return
 	}
 	writeTasks(newTasks)
-	w.Write([]byte("Task deleted"))
+	w.Write([]byte(`{"status":"S","message":"Task deleted"}`))
 }
 
 func main() {
