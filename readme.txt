@@ -1,210 +1,81 @@
 package main
 
 import (
-	"encoding/csv"
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
-type Task struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Time        string `json:"time"`
-	Status      string `json:"status"`
+// Request structure
+type AddRequest struct {
+	Num1 int `json:"num1"`
+	Num2 int `json:"num2"`
 }
 
-type ErrorStruct struct {
-	Status  string `json:"status"`
-	Errcode string `json:"errcode"`
-	Message string `json:"message"`
+// Response structure
+type AddResponse struct {
+	Result int    `json:"result"`
+	Status string `json:"status"`
 }
 
-const fileName = "todos.csv"
-
-func readCSV() ([]Task, error) {
-	var tasks []Task
-	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+// ------------ SERVER ------------
+func addHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		return tasks, err
+		http.Error(w, "Error reading body", http.StatusBadRequest)
+		return
 	}
-	defer file.Close()
 
-	reader := csv.NewReader(file)
-	records, err := reader.ReadAll()
+	var req AddRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	res := AddResponse{Result: req.Num1 + req.Num2, Status: "success"}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}
+
+// ------------ CLIENT ------------
+func callAddAPI(num1, num2 int) {
+	reqData := AddRequest{Num1: num1, Num2: num2}
+	jsonData, _ := json.Marshal(reqData)
+
+	url := "http://localhost:8080/add"
+	request, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	request.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	response, err := client.Do(request)
 	if err != nil {
-		return tasks, err
-	}
-
-	for _, rec := range records {
-		if len(rec) == 5 {
-			id, _ := strconv.Atoi(rec[0])
-			tasks = append(tasks, Task{id, rec[1], rec[2], rec[3], rec[4]})
-		}
-	}
-	return tasks, nil
-}
-
-func writeCSV(tasks []Task) error {
-	file, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	for _, t := range tasks {
-		record := []string{strconv.Itoa(t.ID), t.Title, t.Description, t.Time, t.Status}
-		if err := writer.Write(record); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func addTask(w http.ResponseWriter, r *http.Request) {
-	var es ErrorStruct
-	title := r.URL.Query().Get("title")
-	desc := r.URL.Query().Get("description")
-	taskTime := r.URL.Query().Get("time")
-
-	if strings.TrimSpace(title) == "" || strings.TrimSpace(desc) == "" {
-		es.Status = "error"
-		es.Errcode = "MF01"
-		es.Message = "Title and Description cannot be empty"
-		json.NewEncoder(w).Encode(es)
+		fmt.Println("Error calling API:", err)
 		return
 	}
+	defer response.Body.Close()
 
-	tasks, _ := readCSV()
-	formats := []string{"3:04PM", "3:04 PM"}
-	var newTime time.Time
-	valid := false
-	for _, f := range formats {
-		t, err := time.Parse(f, taskTime)
-		if err == nil {
-			newTime = t
-			valid = true
-			break
-		}
-	}
-	if !valid {
-		es.Status = "error"
-		es.Errcode = "MF02"
-		es.Message = "Invalid time format"
-		json.NewEncoder(w).Encode(es)
-		return
-	}
+	body, _ := io.ReadAll(response.Body)
 
-	for _, t := range tasks {
-		for _, f := range formats {
-			exist, err := time.Parse(f, t.Time)
-			if err == nil {
-				diff := newTime.Sub(exist)
-				if diff < 5*time.Minute && diff > -5*time.Minute {
-					es.Status = "error"
-					es.Errcode = "MF03"
-					es.Message = "Task time must be 5 minutes apart"
-					json.NewEncoder(w).Encode(es)
-					return
-				}
-			}
-		}
-	}
+	var res AddResponse
+	json.Unmarshal(body, &res)
 
-	id := len(tasks) + 1
-	newTask := Task{ID: id, Title: title, Description: desc, Time: taskTime, Status: "Pending"}
-	tasks = append(tasks, newTask)
-	writeCSV(tasks)
-
-	es.Status = "success"
-	es.Errcode = "S01"
-	es.Message = "Task added successfully"
-	json.NewEncoder(w).Encode(es)
-}
-
-func listTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, _ := readCSV()
-	json.NewEncoder(w).Encode(tasks)
-}
-
-func updateTask(w http.ResponseWriter, r *http.Request) {
-	var es ErrorStruct
-	idStr := r.URL.Query().Get("id")
-	newDesc := r.URL.Query().Get("description")
-
-	if strings.TrimSpace(newDesc) == "" {
-		es.Status = "error"
-		es.Errcode = "MF04"
-		es.Message = "Description cannot be empty"
-		json.NewEncoder(w).Encode(es)
-		return
-	}
-
-	id, _ := strconv.Atoi(idStr)
-	tasks, _ := readCSV()
-	found := false
-	for i := range tasks {
-		if tasks[i].ID == id {
-			tasks[i].Description = newDesc
-			found = true
-			break
-		}
-	}
-	if !found {
-		es.Status = "error"
-		es.Errcode = "MF05"
-		es.Message = "Task not found"
-		json.NewEncoder(w).Encode(es)
-		return
-	}
-
-	writeCSV(tasks)
-	es.Status = "success"
-	es.Errcode = "S02"
-	es.Message = "Task updated successfully"
-	json.NewEncoder(w).Encode(es)
-}
-
-func deleteTask(w http.ResponseWriter, r *http.Request) {
-	var es ErrorStruct
-	idStr := r.URL.Query().Get("id")
-	id, _ := strconv.Atoi(idStr)
-	tasks, _ := readCSV()
-	newTasks := []Task{}
-	found := false
-	for _, t := range tasks {
-		if t.ID != id {
-			newTasks = append(newTasks, t)
-		} else {
-			found = true
-		}
-	}
-	if !found {
-		es.Status = "error"
-		es.Errcode = "MF06"
-		es.Message = "Task not found"
-		json.NewEncoder(w).Encode(es)
-		return
-	}
-
-	writeCSV(newTasks)
-	es.Status = "success"
-	es.Errcode = "S03"
-	es.Message = "Task deleted successfully"
-	json.NewEncoder(w).Encode(es)
+	fmt.Println("API Response:", res)
 }
 
 func main() {
-	http.HandleFunc("/add", addTask)
-	http.HandleFunc("/list", listTasks)
-	http.HandleFunc("/update", updateTask)
-	http.HandleFunc("/delete", deleteTask)
-	http.ListenAndServe(":8080", nil)
+	// Run server in goroutine
+	go func() {
+		http.HandleFunc("/add", addHandler)
+		fmt.Println("Server started at :8080")
+		http.ListenAndServe(":8080", nil)
+	}()
+
+	// Call the API as client
+	callAddAPI(5, 15)
 }
