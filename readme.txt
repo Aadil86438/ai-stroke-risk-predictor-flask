@@ -1,132 +1,204 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type Task struct {
 	ID          int    `json:"id"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	Time        string `json:"time"`
 	Status      string `json:"status"`
 }
 
 type ErrorStruct struct {
 	Status  string `json:"status"`
-	ErrCode string `json:"errcode"`
+	Errcode string `json:"errcode"`
 	Message string `json:"message"`
 }
 
-var filename = "tasks.json"
+const fileName = "todos.csv"
 
-func readTasks() ([]Task, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []Task{}, nil
-		}
-		return nil, err
-	}
+func readCSV() ([]Task, error) {
 	var tasks []Task
-	err = json.Unmarshal(data, &tasks)
-	return tasks, err
+	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return tasks, err
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	records, err := reader.ReadAll()
+	if err != nil {
+		return tasks, err
+	}
+
+	for _, rec := range records {
+		if len(rec) == 5 {
+			id, _ := strconv.Atoi(rec[0])
+			tasks = append(tasks, Task{id, rec[1], rec[2], rec[3], rec[4]})
+		}
+	}
+	return tasks, nil
 }
 
-func writeTasks(tasks []Task) error {
-	data, err := json.Marshal(tasks)
+func writeCSV(tasks []Task) error {
+	file, err := os.Create(fileName)
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(filename, data, 0644)
-}
+	defer file.Close()
 
-func sendError(w http.ResponseWriter, code string, msg string) {
-	e := ErrorStruct{Status: "E", ErrCode: code, Message: msg}
-	data, _ := json.Marshal(e)
-	w.WriteHeader(http.StatusBadRequest)
-	w.Write(data)
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	for _, t := range tasks {
+		record := []string{strconv.Itoa(t.ID), t.Title, t.Description, t.Time, t.Status}
+		if err := writer.Write(record); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func addTask(w http.ResponseWriter, r *http.Request) {
-	var t Task
-	body, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(body, &t)
+	var es ErrorStruct
+	title := r.URL.Query().Get("title")
+	desc := r.URL.Query().Get("description")
+	taskTime := r.URL.Query().Get("time")
 
-	if t.Title == "" || t.Description == "" {
-		sendError(w, "MM01", "Title and Description cannot be empty")
+	if strings.TrimSpace(title) == "" || strings.TrimSpace(desc) == "" {
+		es.Status = "error"
+		es.Errcode = "MF01"
+		es.Message = "Title and Description cannot be empty"
+		json.NewEncoder(w).Encode(es)
 		return
 	}
 
-	tasks, _ := readTasks()
-	t.ID = len(tasks) + 1
-	t.Status = "Pending"
-	tasks = append(tasks, t)
-	writeTasks(tasks)
-
-	w.Write([]byte(`{"status":"S","message":"Task added"}`))
-}
-
-func listTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, _ := readTasks()
-	data, _ := json.Marshal(tasks)
-	w.Write(data)
-}
-
-func updateTask(w http.ResponseWriter, r *http.Request) {
-	var t Task
-	body, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(body, &t)
-
-	tasks, _ := readTasks()
-	updated := false
-	for i := range tasks {
-		if tasks[i].ID == t.ID {
-			if t.Title != "" {
-				tasks[i].Title = t.Title
-			}
-			if t.Description != "" {
-				tasks[i].Description = t.Description
-			}
-			if t.Status != "" {
-				tasks[i].Status = t.Status
-			}
-			updated = true
+	tasks, _ := readCSV()
+	formats := []string{"3:04PM", "3:04 PM"}
+	var newTime time.Time
+	valid := false
+	for _, f := range formats {
+		t, err := time.Parse(f, taskTime)
+		if err == nil {
+			newTime = t
+			valid = true
 			break
 		}
 	}
-	if !updated {
-		sendError(w, "MM02", "Task not found")
+	if !valid {
+		es.Status = "error"
+		es.Errcode = "MF02"
+		es.Message = "Invalid time format"
+		json.NewEncoder(w).Encode(es)
 		return
 	}
-	writeTasks(tasks)
-	w.Write([]byte(`{"status":"S","message":"Task updated"}`))
+
+	for _, t := range tasks {
+		for _, f := range formats {
+			exist, err := time.Parse(f, t.Time)
+			if err == nil {
+				diff := newTime.Sub(exist)
+				if diff < 5*time.Minute && diff > -5*time.Minute {
+					es.Status = "error"
+					es.Errcode = "MF03"
+					es.Message = "Task time must be 5 minutes apart"
+					json.NewEncoder(w).Encode(es)
+					return
+				}
+			}
+		}
+	}
+
+	id := len(tasks) + 1
+	newTask := Task{ID: id, Title: title, Description: desc, Time: taskTime, Status: "Pending"}
+	tasks = append(tasks, newTask)
+	writeCSV(tasks)
+
+	es.Status = "success"
+	es.Errcode = "S01"
+	es.Message = "Task added successfully"
+	json.NewEncoder(w).Encode(es)
+}
+
+func listTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, _ := readCSV()
+	json.NewEncoder(w).Encode(tasks)
+}
+
+func updateTask(w http.ResponseWriter, r *http.Request) {
+	var es ErrorStruct
+	idStr := r.URL.Query().Get("id")
+	newDesc := r.URL.Query().Get("description")
+
+	if strings.TrimSpace(newDesc) == "" {
+		es.Status = "error"
+		es.Errcode = "MF04"
+		es.Message = "Description cannot be empty"
+		json.NewEncoder(w).Encode(es)
+		return
+	}
+
+	id, _ := strconv.Atoi(idStr)
+	tasks, _ := readCSV()
+	found := false
+	for i := range tasks {
+		if tasks[i].ID == id {
+			tasks[i].Description = newDesc
+			found = true
+			break
+		}
+	}
+	if !found {
+		es.Status = "error"
+		es.Errcode = "MF05"
+		es.Message = "Task not found"
+		json.NewEncoder(w).Encode(es)
+		return
+	}
+
+	writeCSV(tasks)
+	es.Status = "success"
+	es.Errcode = "S02"
+	es.Message = "Task updated successfully"
+	json.NewEncoder(w).Encode(es)
 }
 
 func deleteTask(w http.ResponseWriter, r *http.Request) {
-	var t Task
-	body, _ := ioutil.ReadAll(r.Body)
-	json.Unmarshal(body, &t)
-
-	tasks, _ := readTasks()
+	var es ErrorStruct
+	idStr := r.URL.Query().Get("id")
+	id, _ := strconv.Atoi(idStr)
+	tasks, _ := readCSV()
 	newTasks := []Task{}
 	found := false
-	for _, task := range tasks {
-		if task.ID != t.ID {
-			newTasks = append(newTasks, task)
+	for _, t := range tasks {
+		if t.ID != id {
+			newTasks = append(newTasks, t)
 		} else {
 			found = true
 		}
 	}
 	if !found {
-		sendError(w, "MM03", "Task not found")
+		es.Status = "error"
+		es.Errcode = "MF06"
+		es.Message = "Task not found"
+		json.NewEncoder(w).Encode(es)
 		return
 	}
-	writeTasks(newTasks)
-	w.Write([]byte(`{"status":"S","message":"Task deleted"}`))
+
+	writeCSV(newTasks)
+	es.Status = "success"
+	es.Errcode = "S03"
+	es.Message = "Task deleted successfully"
+	json.NewEncoder(w).Encode(es)
 }
 
 func main() {
@@ -134,7 +206,5 @@ func main() {
 	http.HandleFunc("/list", listTasks)
 	http.HandleFunc("/update", updateTask)
 	http.HandleFunc("/delete", deleteTask)
-
-	fmt.Println("Server running on port 8080")
 	http.ListenAndServe(":8080", nil)
 }
