@@ -2,69 +2,80 @@ package main
 
 import (
 	"fmt"
-	"net/http"
+	"time"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
-// Struct for cookie data
-type UserCookie struct {
-	Name  string
-	Value string
+// Struct for st1006_customers table
+type Customer struct {
+	ID           uint      `gorm:"primaryKey"`
+	CustomerName string
+	City         string
+	PostalCode   string
+	CreatedBy    string
+	UpdatedBy    string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
-// 1. Set Cookie
-func setCookie(w http.ResponseWriter, r *http.Request) {
-	user := UserCookie{
-		Name:  "username",
-		Value: "MohammedAadil",
-	}
-
-	cookie := http.Cookie{
-		Name:  user.Name,
-		Value: user.Value,
-	}
-
-	http.SetCookie(w, &cookie)
-	fmt.Fprintln(w, "Cookie set using struct!")
-}
-
-// 2. Get Cookie
-func getCookie(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("username")
+// Connect DB
+func connectDB() *gorm.DB {
+	dsn := "root:Best@123@tcp(192.168.2.5:3306)/training?parseTime=true"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		fmt.Fprintln(w, "Cookie not found!")
-		return
+		panic("❌ Failed to connect database")
 	}
-
-	user := UserCookie{
-		Name:  cookie.Name,
-		Value: cookie.Value,
-	}
-
-	fmt.Fprintf(w, "Cookie from struct → Name: %s, Value: %s\n", user.Name, user.Value)
-}
-
-// 3. Delete Cookie
-func deleteCookie(w http.ResponseWriter, r *http.Request) {
-	user := UserCookie{
-		Name:  "username",
-		Value: "",
-	}
-
-	// To delete: just overwrite with empty value
-	cookie := http.Cookie{
-		Name:  user.Name,
-		Value: user.Value,
-	}
-
-	http.SetCookie(w, &cookie)
-	fmt.Fprintln(w, "Cookie deleted using struct!")
+	return db
 }
 
 func main() {
-	http.HandleFunc("/set", setCookie)
-	http.HandleFunc("/get", getCookie)
-	http.HandleFunc("/delete", deleteCookie)
+	db := connectDB()
 
-	fmt.Println("Server started at http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	// ✅ Insert (Create)
+	newCustomer := Customer{
+		CustomerName: "adili",
+		City:         "Chennai",
+		PostalCode:   "600001",
+		CreatedBy:    "admin",
+		UpdatedBy:    "admin",
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+	}
+	if err := db.Create(&newCustomer).Error; err != nil {
+		fmt.Println("Error creating:", err)
+	} else {
+		fmt.Println("Inserted:", newCustomer)
+	}
+
+	// ✅ Select all (Find)
+	var customers []Customer
+	if err := db.Find(&customers).Error; err != nil {
+		fmt.Println("Error fetching:", err)
+	} else {
+		fmt.Println("All Customers:", customers)
+	}
+
+	// ✅ Select first (First)
+	var firstCustomer Customer
+	if err := db.First(&firstCustomer).Error; err != nil {
+		fmt.Println("Error fetching first:", err)
+	} else {
+		fmt.Println("First Customer:", firstCustomer)
+	}
+
+	// ✅ Update
+	if err := db.Model(&firstCustomer).Update("City", "Bangalore").Error; err != nil {
+		fmt.Println("Error updating:", err)
+	} else {
+		fmt.Println("Updated Customer:", firstCustomer)
+	}
+
+	// ✅ Delete
+	if err := db.Delete(&firstCustomer).Error; err != nil {
+		fmt.Println("Error deleting:", err)
+	} else {
+		fmt.Println("Deleted Customer with ID:", firstCustomer.ID)
+	}
 }
